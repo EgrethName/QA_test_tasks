@@ -1,11 +1,11 @@
-from pathlib import Path
 import logging
 import os
 import psutil
-import sys
 import time
 
-logging.basicConfig(level=logging.DEBUG, filename="test_case.log", format='%(asctime)s %(levelname)s:%(message)s')
+from pathlib import Path
+
+logging.basicConfig(level=logging.DEBUG, filename="test_case.log", format='%(asctime)s [%(levelname)s]: %(message)s')
 
 
 class TestException(Exception):
@@ -25,6 +25,7 @@ class CleanUpException(TestException):
 
 
 class TestBase:
+
     def __init__(self, tc_id, name):
         self.tc_id = tc_id
         self.name = name
@@ -42,25 +43,26 @@ class TestBase:
         logging.info(f"Checking TestCase {self.name}, id {self.tc_id} started")
 
         try:
-            logging.info("TestCase(number) module prep started")
+            logging.info(f"TestCase {self.name} module prep started")
             self.prep()
             logging.info("OK")
-        except PrepException:
-            logging.error("FAIL")
+        except PrepException as err:
+            logging.error(f"{err}")
+            return
 
         try:
-            logging.info("TestCase(number) module run started")
+            logging.info(f"TestCase {self.name} module run started")
             self.run()
             logging.info("OK")
-        except RunException:
-            logging.error("FAIL")
+        except RunException as err:
+            logging.error(f"{err}")
 
         try:
-            logging.info("TestCase(number) module clean_up started")
+            logging.info(f"TestCase {self.name} module clean_up started")
             self.clean_up()
             logging.info("OK")
-        except CleanUpException:
-            logging.error("FAIL")
+        except CleanUpException as err:
+            logging.error(f"{err}")
 
         logging.info(f"Checking TestCase {self.name}, id {self.tc_id} completed")
 
@@ -69,8 +71,7 @@ class TestCase1(TestBase):
     def prep(self):
         unix_time = int(time.time())
         if unix_time % 2 != 0:
-            raise PrepException
-        return True
+            raise PrepException("UNIX time is odd number, test case interrupted")
 
     def run(self):
         home_path = str(Path.home())
@@ -80,92 +81,45 @@ class TestCase1(TestBase):
             if os.path.isfile(os.path.join(home_path, element)):
                 file_list.append(element)
         if len(file_list) > 0:
-            return file_list
-        else:
-            raise RunException
-
-    def clean_up(self):
-        pass
-
-    def execute(self):
-        logging.info("Checking TestCase1 started")
-
-        logging.info("TestCase1 module prep started")
-        try:
-            self.prep()
-            logging.info("OK")
-        except PrepException:
-            logging.error("FAIL")
-            return
-
-        logging.info("TestCase1 module run started")
-        try:
-            file_list = self.run()
             logging.info(file_list)
-            logging.info("OK")
-        except RunException:
-            logging.info("File's list is empty")
-            logging.error("FAIL")
-
-        logging.info("TestCase1 module clean_up started")
-        try:
-            logging.info("SKIPPED")
-        except CleanUpException:
-            pass
-
-        logging.info("Checking TestCase1 completed")
+        else:
+            raise RunException("Home directory is empty")
 
 
 class TestCase2(TestBase):
+
+    RAM_SIZE = 1024 * 1024 * 1024  # 1 GB
+    FILE_SIZE = 1024 * 1024  # 1024 KB
+
+    path = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'test')
+
     def prep(self):
         ram_info = psutil.virtual_memory()
         total_ram = ram_info.total
-        if total_ram < 1073741824:
-            raise PrepException
+        if total_ram < self.RAM_SIZE:
+            raise PrepException("Total RAM less than 1Gb")
 
     def run(self):
-        with open("test", "bw") as test_file:
+        with open(self.path, "bw") as test_file:
             try:
-                test_file.write(os.urandom(1048576))
+                test_file.write(os.urandom(self.FILE_SIZE))
             except Exception:
                 raise RunException
 
     def clean_up(self):
-        path = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'test')
-        if path:
-            os.remove(path)
+        if os.path.exists(self.path):
+            os.remove(self.path)
         else:
             raise CleanUpException
 
-    def execute(self):
-        logging.info("Checking TestCase2 started")
 
-        logging.info("TestCase2 module prep started")
-        try:
-            self.prep()
-            logging.info("OK")
-        except PrepException:
-            logging.error("FAIL")
-            return
-
-        logging.info("TestCase2 module run started")
-        try:
-            self.run()
-            logging.info("OK")
-        except RunException:
-            logging.error("FAIL")
-
-        logging.info("TestCase2 module clean_up started")
-        try:
-            self.clean_up()
-            logging.info("OK")
-        except CleanUpException:
-            logging.error("FAIL")
-
-        logging.info("Checking TestCase2 completed")
+def run_tests():
+    test_cases = [TestCase1(1, 'FilesList'),
+                  TestCase2(2, 'RandomFile')]
+    for case in test_cases:
+        case.execute()
+        logging.info('--------------')
 
 
-a = TestCase1(1, 'FilesList')
-b = TestCase2(2, 'RandomFile')
-a.execute()
-b.execute()
+if __name__ == '__main__':
+    run_tests()

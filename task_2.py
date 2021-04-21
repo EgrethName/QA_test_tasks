@@ -11,11 +11,15 @@ hash_methods = {
     'sha256': hashlib.sha256,
 }
 
-input_file_path = sys.argv[1]
-files_dir = sys.argv[2]
+
+def check_args():
+    args = sys.argv
+    if len(args) != 3:
+        raise OSError("Incorrect number of arguments, must be 3")
+    return args[1], args[2]
 
 
-def file_handler():
+def file_handler(input_file_path, files_dir):
     with open(input_file_path, "r", encoding="UTF-8") as total_file:
         for line in total_file:
             try:
@@ -23,11 +27,11 @@ def file_handler():
             except ValueError:
                 print(f"Fail to parse line {line}")
                 continue
-            result = calculate_checksum(file_name, hash_name, checksum)
+            result = calculate_checksum(file_name, hash_name, checksum, files_dir)
             print(f"{file_name} {result}")
 
 
-def calculate_checksum(file_name, hash_alg, checksum):
+def calculate_checksum(file_name, hash_alg, checksum, files_dir):
     hash_method = hash_methods.get(hash_alg.lower())
 
     if not hash_method:
@@ -49,4 +53,5 @@ def calculate_checksum(file_name, hash_alg, checksum):
 
 
 if __name__ == '__main__':
-    file_handler()
+    input_file_path, files_dir = check_args()
+    file_handler(input_file_path, files_dir)
