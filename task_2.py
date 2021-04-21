@@ -53,5 +53,10 @@ def calculate_checksum(file_name, hash_alg, checksum, files_dir):
 
 
 if __name__ == '__main__':
-    input_file_path, files_dir = check_args()
-    file_handler(input_file_path, files_dir)
+    try:
+        input_file_path, files_dir = check_args()
+    except OSError as err:
+        print(err)
+        exit(1)
+    else:
+        file_handler(input_file_path, files_dir)
