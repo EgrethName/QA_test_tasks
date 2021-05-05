@@ -23,7 +23,7 @@ def file_handler(input_file_path, files_dir):
     with open(input_file_path, "r", encoding="UTF-8") as total_file:
         for line in total_file:
             try:
-                file_name, hash_name, checksum = line.split()
+                file_name, hash_name, checksum = line.rsplit(maxsplit=2)
             except ValueError:
                 print(f"Fail to parse line {line}")
                 continue
@@ -36,7 +36,6 @@ def calculate_checksum(file_name, hash_alg, checksum, files_dir):
 
     if not hash_method:
         return f"{hash_alg} is incorrect hash method"
-
     hasher = hash_method()
 
     path = os.path.join(files_dir, file_name)
